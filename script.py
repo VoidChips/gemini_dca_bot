@@ -35,8 +35,8 @@ while True:
     eth_price = float(eth_data['last'])
 
     # get the amount of bitcoin and ethereum that will be purchased
-    btc_amount = fiatToCrypto(40.0, btc_price)
-    eth_amount = fiatToCrypto(40.0, eth_price)
+    btc_amount = fiatToCrypto(40.30, btc_price)
+    eth_amount = fiatToCrypto(40.30, eth_price)
 
     t = datetime.datetime.now()
     payload_nonce = str(int(time.mktime(t.timetuple())*1000))
@@ -46,7 +46,7 @@ while True:
         "nonce": payload_nonce,
         "symbol": "btcusd",
         "amount": str(btc_amount),
-        "price": str(btc_price - 200),  # set the price to buy at
+        "price": str(btc_price - 400),  # set the price to buy at
         "side": "buy",
         "type": "exchange limit",
         "options": ["maker-or-cancel"]
@@ -72,7 +72,7 @@ while True:
         "nonce": payload_nonce,
         "symbol": "ethusd",
         "amount": eth_amount,
-        "price": str(eth_price - 20),  # set the price to buy at
+        "price": str(eth_price - 40),  # set the price to buy at
         "side": "buy",
         "type": "exchange limit",
         "options": ["maker-or-cancel"]
@@ -91,9 +91,10 @@ while True:
 
     today = datetime.datetime.today()
     weekday = today.weekday()
+    hour = today.hour
 
     # buy each coin once on sundays
-    if weekday == 6 and not limitBuyOrderCreated:
+    if weekday == 6 and not limitBuyOrderCreated and hour == 20:
         # display current price of btc and eth
         print(f"BTC: ${btc_price}")
         print(f"ETH: ${eth_price}")
@@ -112,6 +113,7 @@ while True:
 
         limitBuyOrderCreated = True
 
+        print(f"Current time: {today}\n")
         print(btc_order)
         print(eth_order)
     else:
