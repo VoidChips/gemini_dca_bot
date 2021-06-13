@@ -99,7 +99,8 @@ while True:
     hour = today.hour
 
     # buy each coin once on sundays
-    if weekday == 6 and not limitBuyOrderCreated and hour == 20:
+    # set limit buy orders on 3pm
+    if weekday == 6 and not limitBuyOrderCreated and hour == 15:
         # display current price of btc and eth
         print(f"BTC: ${btc_price}")
         print(f"ETH: ${eth_price}")
@@ -125,6 +126,7 @@ while True:
         print(eth_order)
         print(f"BTC order id: {btc_order_id}")
         print(f"ETH order id: {eth_order_id}")
+    # do market orders instead if the limit orders weren't filled on 11pm
     elif weekday == 6 and not limitBuyOrderCreated and hour == 23:
         # cancel all session orders
 
