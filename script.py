@@ -27,6 +27,8 @@ endpoint = "/v1/order/new"
 url = base_url + endpoint
 
 limitBuyOrderCreated = False
+btc_order = None
+eth_order = None
 btc_order_id = 0
 eth_order_id = 0
 
@@ -128,114 +130,127 @@ while True:
         print(eth_order)
         print(f"BTC order id: {btc_order_id}")
         print(f"ETH order id: {eth_order_id}")
-    # do market orders instead if the limit orders weren't filled on 11pm
-    elif weekday == 6 and not limitBuyOrderCreated and hour == 23:
-        # cancel all session orders
-
+    elif weekday == 6 and limitBuyOrderCreated and hour == 23:
+        # do market orders instead if the limit orders weren't filled on 11pm
         time.sleep(1)  # wait 1 second
-        t = datetime.datetime.now()
-        payload_nonce = str(int(time.mktime(t.timetuple())*1000))
+        btcMarketOrder = False
+        ethMarketOrder = False
 
-        cancel_payload = {
-            "request": "/v1/order/cancel/session",
-            "nonce": payload_nonce
-        }
+        if btc_order['is_live'] == True:
+            btcMarketOrder = True
+        if eth_order['is_live'] == True:
+            ethMarketOrder = True
 
-        encoded_payload = json.dumps(cancel_payload).encode()
-        b64 = base64.b64encode(encoded_payload)
-        signature = hmac.new(gemini_api_secret, b64, hashlib.sha384).hexdigest()
+        # cancel all session orders
+        if btcMarketOrder or ethMarketOrder:
+            t = datetime.datetime.now()
+            payload_nonce = str(int(time.mktime(t.timetuple())*1000))
 
-        cancel_request_headers = {'Content-Type': "text/plain",
-                            'Content-Length': "0",
-                            'X-GEMINI-APIKEY': gemini_api_key,
-                            'X-GEMINI-PAYLOAD': b64,
-                            'X-GEMINI-SIGNATURE': signature,
-                            'Cache-Control': "no-cache"}
+            cancel_payload = {
+                "request": "/v1/order/cancel/session",
+                "nonce": payload_nonce
+            }
 
-        print("Cancelling all session orders...")
+            encoded_payload = json.dumps(cancel_payload).encode()
+            b64 = base64.b64encode(encoded_payload)
+            signature = hmac.new(gemini_api_secret, b64,
+                                 hashlib.sha384).hexdigest()
 
-        cancel_response = requests.post(base_url + "/v1/order/cancel/session",
-                                        data=None,
-                                        headers=cancel_request_headers)
-        cancel_order = cancel_response.json()
-        print(cancel_order)
+            cancel_request_headers = {'Content-Type': "text/plain",
+                                      'Content-Length': "0",
+                                      'X-GEMINI-APIKEY': gemini_api_key,
+                                      'X-GEMINI-PAYLOAD': b64,
+                                      'X-GEMINI-SIGNATURE': signature,
+                                      'Cache-Control': "no-cache"}
+
+            print("Cancelling all session orders...")
+
+            cancel_response = requests.post(base_url + "/v1/order/cancel/session",
+                                            data=None,
+                                            headers=cancel_request_headers)
+            cancel_order = cancel_response.json()
+            print(cancel_order)
 
         # do a market order buy using the immediate-or-cancel option
+        if btcMarketOrder:
+            time.sleep(1)  # wait 1 second
+            t = datetime.datetime.now()
+            payload_nonce = str(int(time.mktime(t.timetuple())*1000))
 
-        time.sleep(1)  # wait 1 second
-        t = datetime.datetime.now()
-        payload_nonce = str(int(time.mktime(t.timetuple())*1000))
+            btc_payload = {
+                "request": "/v1/order/new",
+                "nonce": payload_nonce,
+                "symbol": "btcusd",
+                "amount": str(btc_amount),
+                "price": str(btc_price + 10000),  # set the price high
+                "side": "buy",
+                "type": "exchange limit",
+                "options": ["immediate-or-cancel"]
+            }
 
-        btc_payload = {
-            "request": "/v1/order/new",
-            "nonce": payload_nonce,
-            "symbol": "btcusd",
-            "amount": str(btc_amount),
-            "price": str(btc_price + 1000),  # set the price high
-            "side": "buy",
-            "type": "exchange limit",
-            "options": ["immediate-or-cancel"]
-        }
+            encoded_payload = json.dumps(btc_payload).encode()
+            b64 = base64.b64encode(encoded_payload)
+            signature = hmac.new(gemini_api_secret, b64,
+                                 hashlib.sha384).hexdigest()
 
-        encoded_payload = json.dumps(btc_payload).encode()
-        b64 = base64.b64encode(encoded_payload)
-        signature = hmac.new(gemini_api_secret, b64,
-                             hashlib.sha384).hexdigest()
+            btc_request_headers = {'Content-Type': "text/plain",
+                                   'Content-Length': "0",
+                                   'X-GEMINI-APIKEY': gemini_api_key,
+                                   'X-GEMINI-PAYLOAD': b64,
+                                   'X-GEMINI-SIGNATURE': signature,
+                                   'Cache-Control': "no-cache"}
 
-        btc_request_headers = {'Content-Type': "text/plain",
-                               'Content-Length': "0",
-                               'X-GEMINI-APIKEY': gemini_api_key,
-                               'X-GEMINI-PAYLOAD': b64,
-                               'X-GEMINI-SIGNATURE': signature,
-                               'Cache-Control': "no-cache"}
+            time.sleep(1)  # wait 1 second
+            t = datetime.datetime.now()
+            payload_nonce = str(int(time.mktime(t.timetuple())*1000))
 
-        time.sleep(1)  # wait 1 second
-        t = datetime.datetime.now()
-        payload_nonce = str(int(time.mktime(t.timetuple())*1000))
+            # display current price of btc
+            print(f"BTC: ${btc_price}")
+            print(f"Buying {btc_amount} of bitcoin...")
 
-        eth_payload = {
-            "request": "/v1/order/new",
-            "nonce": payload_nonce,
-            "symbol": "ethusd",
-            "amount": eth_amount,
-            "price": str(eth_price + 100),  # set the price high
-            "side": "buy",
-            "type": "exchange limit",
-            "options": ["immediate-or-cancel"]
-        }
-        encoded_payload = json.dumps(eth_payload).encode()
-        b64 = base64.b64encode(encoded_payload)
-        signature = hmac.new(gemini_api_secret, b64,
-                             hashlib.sha384).hexdigest()
+            btc_response = requests.post(url,
+                                         data=None,
+                                         headers=btc_request_headers)
+            btc_order = btc_response.json()
 
-        eth_request_headers = {'Content-Type': "text/plain",
-                               'Content-Length': "0",
-                               'X-GEMINI-APIKEY': gemini_api_key,
-                               'X-GEMINI-PAYLOAD': b64,
-                               'X-GEMINI-SIGNATURE': signature,
-                               'Cache-Control': "no-cache"}
+            print(f"Current time: {today}\n")
+            print(btc_order)
 
-        # display current price of btc and eth
-        print(f"BTC: ${btc_price}")
-        print(f"ETH: ${eth_price}")
+        if ethMarketOrder:
+            time.sleep(1)  # wait 1 second
+            eth_payload = {
+                "request": "/v1/order/new",
+                "nonce": payload_nonce,
+                "symbol": "ethusd",
+                "amount": eth_amount,
+                "price": str(eth_price + 1000),  # set the price high
+                "side": "buy",
+                "type": "exchange limit",
+                "options": ["immediate-or-cancel"]
+            }
+            encoded_payload = json.dumps(eth_payload).encode()
+            b64 = base64.b64encode(encoded_payload)
+            signature = hmac.new(gemini_api_secret, b64,
+                                 hashlib.sha384).hexdigest()
 
-        print(f"Buying {btc_amount} of bitcoin...")
-        print(f"Buying {eth_amount} of ethereum...")
+            eth_request_headers = {'Content-Type': "text/plain",
+                                   'Content-Length': "0",
+                                   'X-GEMINI-APIKEY': gemini_api_key,
+                                   'X-GEMINI-PAYLOAD': b64,
+                                   'X-GEMINI-SIGNATURE': signature,
+                                   'Cache-Control': "no-cache"}
 
-        btc_response = requests.post(url,
-                                     data=None,
-                                     headers=btc_request_headers)
-        btc_order = btc_response.json()
-        eth_response = requests.post(url,
-                                     data=None,
-                                     headers=eth_request_headers)
-        eth_order = eth_response.json()
+            # display current price of eth
+            print(f"ETH: ${eth_price}")
+            print(f"Buying {eth_amount} of ethereum...")
 
-        limitBuyOrderCreated = True
+            eth_response = requests.post(url,
+                                         data=None,
+                                         headers=eth_request_headers)
+            eth_order = eth_response.json()
 
-        print(f"Current time: {today}\n")
-        print(btc_order)
-        print(eth_order)
+            print(f"Current time: {today}\n")
+            print(eth_order)
     elif weekday != 6:
         limitBuyOrderCreated = False
 
